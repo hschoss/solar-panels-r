@@ -1,0 +1,11 @@
+9. Statistical and machine-learning appendix
+
+I would not put this too early. Use it after the main story, as a deeper analytical layer.
+
+Core questions from your list
+Which variables explain the largest share of variance in household grid consumption?
+Can days be grouped into typical usage patterns using clustering methods?
+Can a machine learning model predict the next day’s energy production based on the previous day’s data?
+Can daily grid consumption be predicted from solar production, household consumption, and battery behavior?
+Is there a statistically significant weekday/weekend difference in solar production?
+Is there a statistically significant weekday/weekend difference in household consumption?
