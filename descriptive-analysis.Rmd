@@ -15,11 +15,27 @@ header-includes:
 ```{r setup, include=FALSE}
 library(knitr)
 
+options(width = 78)
+
 knitr::opts_chunk$set(
   echo = TRUE,
   warning = FALSE,
   message = FALSE,
-  fig.pos = "H"
+  fig.pos = "H",
+  fig.align = "center",
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "0.82\\linewidth"
+)
+
+warm_flow_caption <- paste(
+  "Average six-month energy flows in",
+  "the warm season."
+)
+
+cold_flow_caption <- paste(
+  "Average six-month energy flows in",
+  "the low-production season."
 )
 
 # setwd("/home/hannes/gh/solar-panels-r")
@@ -77,8 +93,9 @@ how much is stored in the battery, and how much still has to be imported from
 the public grid. This analysis therefore takes a data-based look at the system
 and evaluates how efficiently the generated solar energy is used.
 
-The main goal is to better understand the cost-efficiency of the system. At the
-same time, this can also be interpreted as a measure of ecological efficiency:
+The main goal is to better understand the cost-efficiency of the system. At
+the same time, this can also be interpreted as a measure of ecological
+efficiency:
 the more locally generated solar energy is used by the household, the less
 dependent the household is on externally supplied electricity.
 
@@ -118,9 +135,10 @@ The most important variables are:
 ## data cleaning
 
 The raw dataset does not contain the same number of observations for every
-year-month combination. This is expected in part, because months have different
-numbers of days. A complete day contains eight observations, so January should
-contain 31 * 8 = 248 observations, whereas February contains either 28 * 8 =
+year-month combination. This is expected in part, because months have
+different numbers of days. A complete day contains eight observations, so
+January should contain 31 * 8 = 248 observations, whereas February contains
+either 28 * 8 =
 224 observations or, in a leap year, 29 * 8 = 232 observations.
 
 The following table shows the number of observations per year and month before
@@ -142,17 +160,18 @@ dat <- dat[!(dat$year == 2023 & dat$month == 3), ]
 source("data-cleaner.R")
 ```
 
-Other months contain only a small number of missing 3-hour intervals. For these
-months, the missing values are approximated using the mean from the same month,
-day, and hour in other years. In total, `r nrow(missing_slots)` out of
+Other months contain only a small number of missing 3-hour intervals. For
+these months, the missing values are approximated using the mean from the same
+month, day, and hour in other years. In total, `r nrow(missing_slots)` out of
 `r nrow(full_grid)` are approximated.
 
 ```{r balanced-month-table}
 table(dat$year, dat$month)
 ```
 
-The resulting dataset preserves the correct calendar structure of the data while
-removing distortions caused by incomplete months or missing 3-hour intervals.
+The resulting dataset preserves the correct calendar structure of the data
+while removing distortions caused by incomplete months or missing 3-hour
+intervals.
 This makes seasonal comparisons of absolute production and consumption values
 more meaningful.
 
@@ -220,8 +239,9 @@ totals_monthly$group <- season$group[
 ```
 
 First, the data are inspected from a yearly perspective to identify whether
-seasonal categories can be derived from the data. Because months have different
-numbers of days, the monthly plots use average daily values instead of simple
+seasonal categories can be derived from the data. Because months have
+different numbers of days, the monthly plots use average daily values instead
+of simple
 monthly sums.
 
 ```{r monthly-plots, fig.width=9, fig.height=7, echo=FALSE}
@@ -269,9 +289,10 @@ declines.
 Grid consumption and solar production appear to move in opposite directions,
 while household consumption remains comparatively stable over the year. One
 notable exception is the pronounced spike in household consumption in the 2025
-and 2026 data. This pattern is addressed in the financial section of the report.
+and 2026 data. This pattern is addressed in the financial section of the
+report.
 
-## Defining solar seasons
+## defining solar seasons
 
 Instead of using fixed calendar seasons, seasons are defined directly from the
 data as high-production and low-production solar months.
@@ -309,9 +330,10 @@ cor_prod_grid_con <- cor(
 ```
 
 The table ranks months by average monthly solar production. Months with ranks
-1 to 6 are classified as warm months, while the remaining months are classified
-as cold months. To evaluate whether high-production months also tend to have
-lower grid consumption, I calculated the Spearman correlation between the
+1 to 6 are classified as warm months, while the remaining months are
+classified as cold months. To evaluate whether high-production months also
+tend to have lower grid consumption, I calculated the Spearman correlation
+between the
 production ranking and the grid-consumption ranking. The resulting correlation
 is `r round(cor_prod_grid_con, 2)`, which indicates a strong inverse seasonal
 relationship between solar production and grid dependence.
@@ -352,10 +374,10 @@ more relevant during cold months.
 To compare seasonal energy flows without bias from different observation
 lengths, the analysis first aggregates all 3-hour observations into monthly
 totals. These monthly totals are then grouped into warm and cold seasons for
-each year. Incomplete seasons are standardized to a six-month equivalent before
-the seasonal totals are averaged across years. The flowcharts therefore show
-the average total energy flows of a typical warm or cold season, not average
-monthly values and not simple totals over the observed period.
+each year. Incomplete seasons are standardized to a six-month equivalent
+before the seasonal totals are averaged across years. The flowcharts therefore
+show the average total energy flows of a typical warm or cold season, not
+average monthly values and not simple totals over the observed period.
 
 ```{r seasonal-flow-data, echo=FALSE}
 seasonal_totals <- aggregate(
@@ -407,7 +429,7 @@ cold_flow <- mean_seasonal_total[
 ]
 ```
 
-```{r warm-flowchart, echo=FALSE, fig.width=6, fig.height=4, out.width="0.82\\linewidth", fig.pos="H", fig.align="center", fig.cap="Average six-month energy flows in the warm season."}
+```{r warm-flowchart, echo=FALSE, fig.cap=warm_flow_caption}
 source("functions/plot-flowchart.R")
 
 plot_flowchart(
@@ -416,7 +438,7 @@ plot_flowchart(
 )
 ```
 
-```{r cold-flowchart, echo=FALSE, fig.width=6, fig.height=4, out.width="0.82\\linewidth", fig.pos="H", fig.align="center", fig.cap="Average six-month energy flows in the low-production season."}
+```{r cold-flowchart, echo=FALSE, fig.cap=cold_flow_caption}
 plot_flowchart(
   cold_flow,
   "Low-production season"
@@ -426,12 +448,12 @@ plot_flowchart(
 \FloatBarrier
 
 
-# financial implications of seasonality
+## financial implications of seasonality
 
 The financial implications of grid exchange are asymmetric because electricity
 bought from the grid is much more expensive than electricity sold to the grid.
-Assuming a feed-in compensation of 0.05 EUR/kWh and a grid electricity price of
-0.35 EUR/kWh, one kilowatt-hour imported from the grid costs seven times as
+Assuming a feed-in compensation of 0.05 EUR/kWh and a grid electricity price
+of 0.35 EUR/kWh, one kilowatt-hour imported from the grid costs seven times as
 much as one kilowatt-hour exported to the grid earns.
 
 ```{r finance-by-season, echo=FALSE, results='asis', fig.pos='H'}
@@ -439,6 +461,8 @@ feedin_rate <- 0.05
 grid_rate <- 0.35
 
 finance_by_season <- data.frame(
+  production = mean_seasonal_total$production,
+  grid_consumption = mean_seasonal_total$grid_consumption,
   season = mean_seasonal_total$group,
   feedin_revenue_eur = mean_seasonal_total$grid_feedin * 1000 * feedin_rate,
   grid_cost_eur = mean_seasonal_total$grid_consumption * 1000 * grid_rate
@@ -455,6 +479,8 @@ knitr::kable(
   row.names = FALSE,
   col.names = c(
     "Season",
+    "Grid feed-in [MWh]",
+    "Grid consumption [MWh]",
     "Feed-in revenue [EUR]",
     "Grid cost [EUR]",
     "Net grid balance [EUR]"
@@ -466,13 +492,55 @@ knitr::kable(
 )
 ```
 
-This shows why direct consumption and battery use are financially more valuable
-than feeding electricity into the grid. Each kilowatt-hour used directly by the
-household avoids buying electricity for 0.35 EUR, whereas feeding the same
-kilowatt-hour into the grid would only earn 0.05 EUR. Therefore, using solar
-electricity locally is worth about 0.30 EUR more per kWh than exporting it.
+This shows why direct consumption and battery use are financially more
+valuable than feeding electricity into the grid. Each kilowatt-hour used
+directly by the household avoids buying electricity for 0.35 EUR, whereas
+feeding the same kilowatt-hour into the grid would only earn 0.05 EUR.
+Therefore, using solar electricity locally is worth about 0.30 EUR more per kWh
+than exporting it. With this background, we can calculate the costs we lose
+by feeding electricity into the grid instead of using it ourselves.
 
-## Net energy balances
+```{r opportunity-cost}
+# total opportunity cost per exported kWh [in EUR]
+wh_to_kwh(sum(dat$grid_feedin, na.rm = TRUE)) * 0.30
+
+# in the warm season [in EUR]
+wh_to_kwh(
+  sum(dat[dat$month %in% 4:9, "grid_feedin"], na.rm = TRUE)
+) * 0.30
+
+# in the cold season [in EUR]
+wh_to_kwh(
+sum(dat[dat$month %in% c(10:12, 1:3), "grid_feedin"], na.rm = TRUE)
+) * 0.30
+```
+
+This opportunity cost was the main reason why my parents bought a "Heizstab"
+to heat water with excess solar electricity. As we already know the excess
+electricity makes up almost three quarters of production in summer and about
+one third in winter.
+
+This also puts the recent political debate about reducing support for solar
+feed-in into perspective. The data show that solar panels are not simply an
+easy way to make money. Without local self-consumption, feeding electricity
+into the grid can be economically unattractive because the household gives up
+electricity that would otherwise replace much more expensive grid electricity.
+
+
+# improving daily energy usage efficiency
+
+There is two ways to maximize this system: 
+One small lever is to cut down on grid consumption and save  a small amount per season
+roughly 
+this is about x EUR per year in energy costs.
+
+The much bigger lever is to use up the energy yourself
+
+That is why i want to plot a day from 06:00 to 00:00 in a normal summer month
+
+
+
+## net energy balances
 
 Here, the net production balance is defined as total solar production minus
 total household consumption. A positive value means that the system produced
@@ -515,8 +583,8 @@ The production-minus-consumption balance is about
 `r round(net_energy_balance_mwh, 2)` MWh. The grid-export-minus-grid-import
 balance is about `r round(net_grid_balance_mwh, 2)` MWh. This means the
 household produced substantially more solar energy than it consumed, but part
-of this surplus was exported because production and demand did not always occur
-at the same time.
+of this surplus was exported because production and demand did not always
+occur at the same time.
 
 ## Local use of solar production
 
@@ -543,6 +611,8 @@ knitr::kable(
 )
 ```
 
-The household used about `r pct(local_solar_share)` percent of solar production
-locally, either directly or through the battery. The remaining share was fed
-into the public grid.
+
+
+The household used about `r pct(local_solar_share)` percent of solar
+production locally, either directly or through the battery. The remaining
+share was fed into the public grid.
