@@ -1,5 +1,5 @@
 ---
-title: "Descriptive Analysis of Solar Data"
+title: "descriptive analysis of solar panel data"
 author: "Hannes Schoss"
 output:
   pdf_document:
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   message = FALSE
 )
 
-setwd("/home/hannes/gh/solar")
+# setwd("/home/hannes/gh/solar-panels-r")
 source("data-loader.R")
 
 # helper functions for readable output
@@ -109,9 +109,7 @@ because data collection started during that month, so it is removed from the
 analysis. 
 
 ```{r remove-incomplete-start-month}
-dat <- dat[
-  !(dat$year == 2023 & dat$month == 3),
-]
+dat <- dat[!(dat$year == 2023 & dat$month == 3), ]
 ```
 
 ```{r clean-data, echo=FALSE}
@@ -138,11 +136,89 @@ more meaningful.
 
 # descriptive analysis
 
+```{r monthly-energy-data, echo=FALSE}
+flow_vars <- c(
+  "production",
+  "consumption",
+  "battery_charge",
+  "battery_discharge",
+  "grid_feedin",
+  "grid_consumption",
+  "direct_consumption"
+)
+
+flow_labels <- c(
+  production = "Solar production",
+  consumption = "Total consumption",
+  battery_charge = "Battery charge",
+  battery_discharge = "Battery discharge",
+  grid_feedin = "Grid feed-in",
+  grid_consumption = "Grid consumption",
+  direct_consumption = "Direct consumption"
+)
+
+totals_monthly <- aggregate(
+  dat[flow_vars],
+  by = list(
+    year = dat$year,
+    month = dat$month
+  ),
+  FUN = sum,
+  na.rm = TRUE
+)
+
+mean_monthly <- aggregate(
+  totals_monthly[flow_vars],
+  by = list(month = totals_monthly$month),
+  FUN = mean,
+  na.rm = TRUE
+)
+
+season <- mean_monthly[
+  c("month", "production", "grid_consumption")
+]
+
+n_years <- aggregate(
+  year ~ month,
+  data = totals_monthly,
+  FUN = length
+)
+
+season <- merge(
+  season,
+  n_years,
+  by = "month"
+)
+
+season$month_name <- month.name[season$month]
+
+season$production_rank <- rank(
+  -season$production,
+  ties.method = "first"
+)
+
+season$grid_consumption_rank <- rank(
+  -season$grid_consumption,
+  ties.method = "first"
+)
+
+season$group <- ifelse(
+  season$production_rank <= 6,
+  "warm",
+  "cold"
+)
+
+season <- season[order(season$production_rank), ]
+
+totals_monthly$group <- season$group[
+  match(totals_monthly$month, season$month)
+]
+```
+
 First I want to look at the data from a yearly perspective, and decide
-if you can find categories like "seasons" in the data.
+if one can find categories like "seasons" in the data.
 Because months have different numbers of days, I use average daily
-values for monthly comparisons instead of simple monthly sums. This
-makes months with 28, 30, and 31 days more comparable.
+values for monthly comparisons instead of simple monthly sums.
 
 ```{r monthly-plots, fig.width=9, fig.height=7, echo = FALSE}
 par(mfrow = c(2, 2))
@@ -175,11 +251,18 @@ plot_month_by_year(
 
 par(mfrow = c(1, 1))
 ```
+
 The plots show strong seasonality in the energy flows. Solar production and
 grid feed-in peak in the brighter months and decline sharply in winter. As a
-result, grid consumption is lowest during spring and summer and rises again in
-the darker months, when less solar energy is available.
+result, grid consumption remains very low during spring and summer, when solar
+availability is high, and rises again in autumn and winter as solar production
+declines.
 
+Grid consumption and Solar Production / Grid Feed-in seem to be inverse. The
+Household Consumption stays on a consistent level all year round. One notable
+exception is the pronounced spike in household consumption in the 2025 and 2026
+data. Although this pattern appears unusual at first glance, it has a specific
+explanation that will be addressed in the financial section of this paper.
 
 ## defining solar seasons
 
@@ -190,27 +273,17 @@ solar months.
 * **warm months**: the six months with the highest total solar production
 * **cold months**: the six months with the lowest total solar production
 
-```{r solar-seasons, echo = FALSE}
-season <- aggregate(
-  cbind(production, grid_consumption) ~ month,
-  data = dat,
-  FUN = mean,
-  na.rm = TRUE
-)
-
-season$month_name <- month.name[season$month]
-season$production_rank <- rank(-season$production, ties.method = "first")
-season$grid_consumption_rank <- rank(-season$grid_consumption, ties.method = "first")
-season$group <- ifelse(season$production_rank <= 6, "warm", "cold")
-season <- season[order(season$production_rank), ]
-
-kable(
+```{r solar-seasons, echo=FALSE, results='asis'}
+knitr::kable(
   season,
   format = "latex",
   booktabs = TRUE,
   digits = 0,
-  caption = "Monthly solar production and grid consumption ranked by
-  production in kWh"
+  row.names = FALSE,
+  caption = paste(
+    "Estimated average monthly solar production and grid consumption,",
+    "ranked by average monthly production"
+  )
 )
 ```
 
@@ -220,77 +293,185 @@ cor_prod_grid_con <- cor(
   season$grid_consumption_rank,
   method = "spearman"
 )
+
 ```
 
 The table ranks months by total solar production. Months with ranks 1 to 6 are
 classified as warm months, while the remaining months are classified as cold
 months. To evaluate whether high-production months also tend to have lower grid
-consumption, I calculated the Spearman rank correlation between the production
-ranking and the grid consumption ranking. The resulting correlation is
-`r round(cor_prod_grid_con, 2)`.
+consumption, I calculated the correlation between the production ranking and
+the grid consumption ranking, which is known as the Spearman Correlation. The
+resulting correlation is `r round(cor_prod_grid_con, 2)` and very high.
+
+# household energy balance
+
+This section digs into the total energy flows over the full observation period.
+First we look at the the absolute energy amounts in MWh. Then we look at the 
+energy flow, comparing the cold and the warm months.
 
 
+## total energy balance
 
+The total values provide an overview of the household energy balance, but they
+hide important seasonal differences. Solar production is expected to be higher
+during the warm season, while grid consumption is usually more relevant during
+the cold season. Because of this, the energy flows were summarized separately for
+warm and cold months.
 
-## Total household performance
-
-This section summarizes the total energy flows over the full observation period.
-Table \@ref(tab:total-data) reports the absolute energy amounts in MWh. These
-totals describe the overall household energy balance, including solar
-production, household consumption, battery charging and discharging, grid
-feed-in, grid consumption, and the direct consumption of self-produced solar
-energy.
-
-```{r total-data, echo=FALSE, results='asis'}
-energy_total <- function(data) {
-  data.frame(
-    production = wh_to_mwh(sum(data$production, na.rm = TRUE)),
-    consumption = wh_to_mwh(sum(data$consumption, na.rm = TRUE)),
-    battery_charge = wh_to_mwh(sum(data$battery_charge, na.rm = TRUE)),
-    battery_discharge = wh_to_mwh(sum(data$battery_discharge, na.rm = TRUE)),
-    grid_feedin = wh_to_mwh(sum(data$grid_feedin, na.rm = TRUE)),
-    grid_consumption = wh_to_mwh(sum(data$grid_consumption, na.rm = TRUE)),
-    direct_consumption = wh_to_mwh(sum(data$direct_consumption, na.rm = TRUE))
+```{r total-data, echo=FALSE, results='asis', fig.pos = 'H'}
+total <- data.frame(
+  energy_flow = unname(flow_labels),
+  mwh = as.numeric(
+    wh_to_mwh(colSums(dat[flow_vars], na.rm = TRUE))
   )
-}
-
-total <- energy_total(dat)
+)
 
 knitr::kable(
   total,
   format = "latex",
   booktabs = TRUE,
   digits = 2,
-  caption = "Total energy flows over the full observation period in MWh."
+  row.names = FALSE,
+  col.names = c("Energy flow", "MWh"),
+  caption = "Total energy flows over the full observation period."
+)
+```
+
+## seasonal breakdown of household energy flows
+
+```{r seasonal-flowchart,
+  echo=FALSE,
+  fig.width=9,
+  fig.height=5,
+  fig.pos='H',
+  fig.cap="Average monthly energy flows in warm and cold months."
+}
+source("functions/plot-flowchart.R")
+source("functions/plot-flowchart.R")
+
+mean_seasonal_month <- aggregate(
+  totals_monthly[flow_vars],
+  by = list(group = totals_monthly$group),
+  FUN = mean,
+  na.rm = TRUE
+)
+
+mean_seasonal_month[flow_vars] <- lapply(
+  mean_seasonal_month[flow_vars],
+  wh_to_mwh
+)
+
+warm_flow <- mean_seasonal_month[
+  mean_seasonal_month$group == "warm",
+  flow_vars,
+  drop = FALSE
+]
+
+cold_flow <- mean_seasonal_month[
+  mean_seasonal_month$group == "cold",
+  flow_vars,
+  drop = FALSE
+]
+
+plot_flowchart(
+  warm_flow,
+  "Average monthly energy flows in high-production months"
+)
+
+plot_flowchart(
+  cold_flow,
+  "Average monthly energy flows in low-production months"
 )
 ```
 
 
-## household performance by season
 
-The total values provide an overview of the household energy balance, but they
-hide important seasonal differences. Solar production is expected to be higher
-during the warm season, while grid consumption is usually more relevant during
-the cold season. Therefore, the energy flows are also summarized separately for
-warm and cold months.
 
-Figure @ref(fig:total-flowchart) visualizes the main energy flows between solar
-production, battery storage, grid exchange, and household consumption for both
-seasonal periods.
 
-```{r total-flowchart, echo=FALSE, fig.width=9, fig.height=5, fig.pos='H', fig.cap="Total energy flows in warm and cold months."}
-source("functions/plot-flowchart.R")
+```{r berechnung}
+# flow_vars <- colnames(total)
 
-dat$season <- ifelse(dat$month %in% 4:9, "warm", "cold")
+flow_vars <- c(
+  "production",
+  "consumption",
+  "battery_charge",
+  "battery_discharge",
+  "grid_feedin",
+  "grid_consumption",
+  "direct_consumption"
+)
 
-total_warm <- energy_total(dat[dat$season == "warm", ])
-total_cold <- energy_total(dat[dat$season == "cold", ])
+totals_monthly <- aggregate(
+  dat[flow_vars], by = list(year = dat$year, month = dat$month),
+  FUN = sum, na.rm = TRUE)
 
-plot_flowchart(total_warm, "Total energy flows in warm months")
-plot_flowchart(total_cold, "Total energy flows in cold months")
+totals_monthly$season <- ifelse(
+  totals_monthly$month %in% 4:9,
+  "warm",
+  "cold"
+)
+
+mean_by_month <- aggregate(
+  totals_monthly[flow_vars],
+  by = list(
+    month = totals_monthly$month,
+    season = totals_monthly$season
+  ),
+  FUN = mean,
+  na.rm = TRUE
+)
+
+mean_by_season <- aggregate(
+  mean_by_month[flow_vars],
+  by = list(season = mean_by_month$season),
+  FUN = mean,
+  na.rm = TRUE
+)
 ```
 
-## financial implications
+
+```{r total-flowchart, echo=FALSE, fig.width=9, fig.height=5, fig.pos='H', fig.cap="Total energy flows in warm and cold months."}
+warm_monthly_mean <- mean_by_season[
+  mean_by_season$season == "warm",
+  flow_vars
+]
+
+cold_monthly_mean <- mean_by_season[
+  mean_by_season$season == "cold",
+  flow_vars
+]
+
+warm_monthly_mean[] <- lapply(warm_monthly_mean, wh_to_mwh)
+cold_monthly_mean[] <- lapply(cold_monthly_mean, wh_to_mwh)
+
+plot_flowchart(
+  warm_monthly_mean,
+  "Average monthly energy flows in warm months"
+)
+
+plot_flowchart(
+  cold_monthly_mean,
+  "Average monthly energy flows in cold months"
+)
+```
+
+
+
+
+
+## financial implications of seasonality
+
+As one might guess from the visualizations, there seem to be different 
+money gains from the tow  different seasons in the year.
+
+lets see how much the system earned and spent every year for the cold and the warm season.
+
+earning: 5 cent per kwh
+spending: 35 cent per kwh
+
+
+ist es ausgeglichen 
+
 
 
 Here, the net balance is defined as total solar production minus total household consumption. A positive value means that the system produced more energy than the household consumed over the full observation period.
