@@ -241,8 +241,7 @@ totals_monthly$group <- season$group[
 First, the data are inspected from a yearly perspective to identify whether
 seasonal categories can be derived from the data. Because months have
 different numbers of days, the monthly plots use average daily values instead
-of simple
-monthly sums.
+of simple monthly sums.
 
 ```{r monthly-plots, fig.width=9, fig.height=7, echo=FALSE}
 par(mfrow = c(2, 2))
@@ -337,6 +336,14 @@ between the
 production ranking and the grid-consumption ranking. The resulting correlation
 is `r round(cor_prod_grid_con, 2)`, which indicates a strong inverse seasonal
 relationship between solar production and grid dependence.
+
+Based on this classification, we can enrich the data set by adding season as
+a new variable.
+
+```{r season-variable}
+dat$season <- ifelse(dat$month %in% 4:9, "warm", "cold")
+dat$season <- factor(dat$season)
+```
 
 # household energy balance
 
@@ -461,9 +468,9 @@ feedin_rate <- 0.05
 grid_rate <- 0.35
 
 finance_by_season <- data.frame(
+  season = mean_seasonal_total$group,
   production = mean_seasonal_total$production,
   grid_consumption = mean_seasonal_total$grid_consumption,
-  season = mean_seasonal_total$group,
   feedin_revenue_eur = mean_seasonal_total$grid_feedin * 1000 * feedin_rate,
   grid_cost_eur = mean_seasonal_total$grid_consumption * 1000 * grid_rate
 )
@@ -483,7 +490,7 @@ knitr::kable(
     "Grid consumption [MWh]",
     "Feed-in revenue [EUR]",
     "Grid cost [EUR]",
-    "Net grid balance [EUR]"
+    "Balance [EUR]"
   ),
   caption = paste(
     "Estimated grid-related financial balance for an average",
@@ -506,12 +513,12 @@ wh_to_kwh(sum(dat$grid_feedin, na.rm = TRUE)) * 0.30
 
 # in the warm season [in EUR]
 wh_to_kwh(
-  sum(dat[dat$month %in% 4:9, "grid_feedin"], na.rm = TRUE)
+  sum(dat[dat$month == "warm", "grid_feedin"], na.rm = TRUE)
 ) * 0.30
 
 # in the cold season [in EUR]
 wh_to_kwh(
-sum(dat[dat$month %in% c(10:12, 1:3), "grid_feedin"], na.rm = TRUE)
+sum(dat[dat$month == "cold", "grid_feedin"], na.rm = TRUE)
 ) * 0.30
 ```
 
@@ -539,80 +546,261 @@ The much bigger lever is to use up the energy yourself
 That is why i want to plot a day from 06:00 to 00:00 in a normal summer month
 
 
+x axis: 06:00 -> 00:00 
 
-## net energy balances
+dat[dat$season == "warm", ]
 
-Here, the net production balance is defined as total solar production minus
-total household consumption. A positive value means that the system produced
-more energy than the household consumed over the full observation period.
+should show a line with the 80% confidence interval for each of the six summer months
 
-```{r net-balance, echo=FALSE, results='asis'}
-net_energy_balance_mwh <- wh_to_mwh(
-  sum(dat$production, na.rm = TRUE) -
-    sum(dat$consumption, na.rm = TRUE)
+type: l
+
+
+# solar production over the day
+i do not want the 80% ci for every month.  I want one big "halo" 80%ci for the whole warm season,
+it should be really light and just in the background, to show the arch
+
+
+
+ithere is a battery called battery state of charge. I want a new variable called
+first_full_battery that marks the time this batttery is full for the first time in the day
+
+the timespan to this hour should be a grey area in the graphic
+
+'data.frame':	9356 obs. of  15 variables:
+ $ production             : int  6802 6063 1737 4 0 0 0 873 2278 2297 ...
+ $ consumption            : int  1010 906 756 972 677 346 301 332 879 1333 ...
+ $ battery_charge         : int  4022 111 74 0 0 0 0 689 1433 1086 ...
+ $ battery_discharge      : int  21 1 10 931 644 313 269 134 48 221 ...
+ $ grid_feedin            : int  1819 5047 926 7 2 1 1 20 36 202 ...
+ $ grid_consumption       : int  31 0 7 43 36 32 32 35 23 101 ...
+ $ battery_state_of_charge: int  66 100 99 85 57 40 29 21 55 87 ...
+ $ direct_consumption     : int  987 906 743 4 0 0 0 180 828 1104 ...
+ $ time                   : POSIXct, format: "2023-03-11 09:00:00" "2023-03-11 12:00:00" ...
+ $ year                   : int  2023 2023 2023 2023 2023 2023 2023 2023 2023 2023 ...
+ $ month                  : int  3 3 3 3 3 3 3 3 3 3 ...
+ $ day                    : int  11 11 11 11 11 12 12 12 12 12 ...
+ $ hour                   : int  9 12 15 18 21 0 3 6 9 12 ...
+ $ date                   : Date, format: "2023-03-11" "2023-03-11" ...
+ $ season                 : chr  "cold" "cold" "cold" "cold" ...
+>
+
+
+
+
+ci_fun <- function(x) {
+  n <- sum(!is.na(x))
+  m <- mean(x, na.rm = TRUE)
+  e <- qt(0.90, df = n - 1) * sd(x, na.rm = TRUE) / sqrt(n)
+
+  c(mean = m, lower = m - e, upper = m + e)
+}
+
+prod_hour_month <- aggregate(
+  production ~ month + hour,
+  dat[dat$season == "warm" & dat$hour >= 6 & dat$hour <= 21, ],
+  mean,
+  na.rm = TRUE
 )
 
-net_grid_balance_mwh <- wh_to_mwh(
-  sum(dat$grid_feedin, na.rm = TRUE) -
-    sum(dat$grid_consumption, na.rm = TRUE)
+prod_hour_warm <- aggregate(
+  production ~ hour,
+  dat[dat$season == "warm" & dat$hour >= 6 & dat$hour <= 21, ],
+  ci_fun
 )
 
-net_balance <- data.frame(
-  balance = c(
-    "Production minus consumption",
-    "Grid export minus grid import"
+prod_hour_warm <- do.call(data.frame, prod_hour_warm)
+names(prod_hour_warm) <- c("hour", "mean", "lower", "upper")
+
+plot(
+  NA,
+  xlim = c(6, 21),
+  ylim = range(
+    c(prod_hour_warm$lower, prod_hour_warm$upper,
+      prod_hour_month$production),
+    na.rm = TRUE
   ),
-  energy_mwh = c(
-    net_energy_balance_mwh,
-    net_grid_balance_mwh
+  xlab = "Hour of day",
+  ylab = "Solar production",
+  xaxt = "n",
+  type = "n"
+)
+
+axis(
+  1,
+  at = c(6, 9, 12, 15, 18, 21),
+  labels = c("06:00", "09:00", "12:00", "15:00", "18:00", "21:00")
+)
+
+polygon(
+  c(prod_hour_warm$hour, rev(prod_hour_warm$hour)),
+  c(prod_hour_warm$lower, rev(prod_hour_warm$upper)),
+  col = rgb(0, 0, 0, 0.08),
+  border = NA
+)
+
+lines(
+  prod_hour_warm$hour,
+  prod_hour_warm$mean,
+  lwd = 3,
+  col = rgb(0, 0, 0, 0.35)
+)
+
+warm_months <- sort(unique(prod_hour_month$month))
+
+for (i in seq_along(warm_months)) {
+  tmp <- prod_hour_month[prod_hour_month$month == warm_months[i], ]
+
+  lines(
+    tmp$hour,
+    tmp$production,
+    lwd = 2,
+    col = i
   )
+}
+
+legend(
+  "topright",
+  legend = month.abb[warm_months],
+  col = seq_along(warm_months),
+  lty = 1,
+  lwd = 2,
+  title = "Month"
 )
 
-knitr::kable(
-  net_balance,
-  format = "latex",
-  booktabs = TRUE,
-  digits = 2,
-  row.names = FALSE,
-  col.names = c("Balance", "MWh"),
-  caption = "Net energy balances over the full observation period."
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## grid consumption during the night
+
+
+plot(production ~ hour, dat[dat$season == "warm", ])
+
+
+
+I want another graphic for plotting the grid_consumption and i want it to start at 
+21:00 Uhr and go through the night till the morning at 06:00. I aslo want you to write
+the version below more concise (e.g. no extra dataframe for warm_dat....)
+
+
+
+
+
+
+
+
+warm_dat <- dat[dat$season == "warm", ]
+
+prod_hour_month <- aggregate(
+  production ~ month + hour,
+  data = warm_dat,
+  FUN = function(x) {
+    n <- sum(!is.na(x))
+    m <- mean(x, na.rm = TRUE)
+    s <- sd(x, na.rm = TRUE)
+
+    error <- qt(0.90, df = n - 1) * s / sqrt(n)
+
+    c(
+      mean = m,
+      lower = m - error,
+      upper = m + error
+    )
+  }
 )
-```
 
-The production-minus-consumption balance is about
-`r round(net_energy_balance_mwh, 2)` MWh. The grid-export-minus-grid-import
-balance is about `r round(net_grid_balance_mwh, 2)` MWh. This means the
-household produced substantially more solar energy than it consumed, but part
-of this surplus was exported because production and demand did not always
-occur at the same time.
-
-## Local use of solar production
-
-```{r local-use, echo=FALSE, results='asis'}
-local_solar_use_wh <- sum(dat$production, na.rm = TRUE) -
-  sum(dat$grid_feedin, na.rm = TRUE)
-
-local_solar_share <- local_solar_use_wh /
-  sum(dat$production, na.rm = TRUE)
-
-local_use <- data.frame(
-  measure = "Share of solar production used locally",
-  percent = pct(local_solar_share)
+prod_hour_month <- do.call(
+  data.frame,
+  prod_hour_month
 )
 
-knitr::kable(
-  local_use,
-  format = "latex",
-  booktabs = TRUE,
-  digits = 1,
-  row.names = FALSE,
-  col.names = c("Measure", "Percent"),
-  caption = "Share of solar production used locally by the household."
+names(prod_hour_month) <- c(
+  "month",
+  "hour",
+  "mean",
+  "lower",
+  "upper"
 )
-```
 
+prod_hour_month <- prod_hour_month[
+  order(prod_hour_month$month, prod_hour_month$hour),
+]
 
+plot(
+  NA,
+  xlim = c(6, 24),
+  ylim = range(
+    c(prod_hour_month$lower, prod_hour_month$upper),
+    na.rm = TRUE
+  ),
+  xlab = "Hour of day",
+  ylab = "Production",
+  xaxt = "n",
+  type = "n"
+)
 
-The household used about `r pct(local_solar_share)` percent of solar
-production locally, either directly or through the battery. The remaining
-share was fed into the public grid.
+axis(
+  side = 1,
+  at = c(6, 9, 12, 15, 18, 21),
+  labels = c("06:00", "09:00", "12:00", "15:00",
+             "18:00", "21:00")
+)
+
+warm_months <- sort(unique(prod_hour_month$month))
+
+for (i in seq_along(warm_months)) {
+  month_i <- warm_months[i]
+  tmp <- prod_hour_month[prod_hour_month$month == month_i, ]
+
+  lines(
+    tmp$hour,
+    tmp$mean,
+    type = "l",
+    lwd = 2,
+    col = i
+  )
+
+  lines(
+    tmp$hour,
+    tmp$lower,
+    type = "l",
+    lty = 2,
+    col = i
+  )
+
+  lines(
+    tmp$hour,
+    tmp$upper,
+    type = "l",
+    lty = 2,
+    col = i
+  )
+}
+
+legend(
+  "topright",
+  legend = month.abb[warm_months],
+  col = seq_along(warm_months),
+  lty = 1,
+  lwd = 2,
+  title = "Month"
+)
