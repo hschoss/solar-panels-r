@@ -1,0 +1,260 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{5}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={analysis of solar panel data},
+  pdfauthor={Hannes Schoss},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{analysis of solar panel data}
+\author{Hannes Schoss}
+\date{}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+i need more detailled time data. I want to evaluate, when the system is
+most efficient in a daily thing
+
+There is two ways to maximize this system: One small lever is to cut
+down on grid consumption and save a small amount per season roughly this
+is about x EUR per year in energy costs.
+
+The much bigger lever is to use up the energy yourself
+
+That is why i want to plot a day from 06:00 to 00:00 in a normal summer
+month
+
+x axis: 06:00 -\textgreater{} 00:00
+
+dat{[}dat\$season == ``warm'', {]}
+
+should show a line with the 80\% confidence interval for each of the six
+summer months
+
+type: l
+
+\section{solar production over the
+day}\label{solar-production-over-the-day}
+
+i do not want the 80\% ci for every month. I want one big ``halo''
+80\%ci for the whole warm season, it should be really light and just in
+the background, to show the arch
+
+ithere is a battery called battery state of charge. I want a new
+variable called first\_full\_battery that marks the time this batttery
+is full for the first time in the day
+
+the timespan to this hour should be a grey area in the graphic
+
+`data.frame': 9356 obs. of 15 variables: \$ production : int 6802 6063
+1737 4 0 0 0 873 2278 2297 \ldots{} \$ consumption : int 1010 906 756
+972 677 346 301 332 879 1333 \ldots{} \$ battery\_charge : int 4022 111
+74 0 0 0 0 689 1433 1086 \ldots{} \$ battery\_discharge : int 21 1 10
+931 644 313 269 134 48 221 \ldots{} \$ grid\_feedin : int 1819 5047 926
+7 2 1 1 20 36 202 \ldots{} \$ grid\_consumption : int 31 0 7 43 36 32 32
+35 23 101 \ldots{} \$ battery\_state\_of\_charge: int 66 100 99 85 57 40
+29 21 55 87 \ldots{} \$ direct\_consumption : int 987 906 743 4 0 0 0
+180 828 1104 \ldots{} \$ time : POSIXct, format: ``2023-03-11 09:00:00''
+``2023-03-11 12:00:00'' \ldots{} \$ year : int 2023 2023 2023 2023 2023
+2023 2023 2023 2023 2023 \ldots{} \$ month : int 3 3 3 3 3 3 3 3 3 3
+\ldots{} \$ day : int 11 11 11 11 11 12 12 12 12 12 \ldots{} \$ hour :
+int 9 12 15 18 21 0 3 6 9 12 \ldots{} \$ date : Date, format:
+``2023-03-11'' ``2023-03-11'' \ldots{} \$ season : chr ``cold'' ``cold''
+``cold'' ``cold'' \ldots{} \textgreater{}
+
+ci\_fun \textless- function(x) \{ n \textless- sum(!is.na(x)) m
+\textless- mean(x, na.rm = TRUE) e \textless- qt(0.90, df = n - 1) *
+sd(x, na.rm = TRUE) / sqrt(n)
+
+c(mean = m, lower = m - e, upper = m + e) \}
+
+prod\_hour\_month \textless- aggregate( production \textasciitilde{}
+month + hour, dat{[}dat\(season == "warm" & dat\)hour \textgreater= 6 \&
+dat\$hour \textless= 21, {]}, mean, na.rm = TRUE )
+
+prod\_hour\_warm \textless- aggregate( production \textasciitilde{}
+hour, dat{[}dat\(season == "warm" & dat\)hour \textgreater= 6 \&
+dat\$hour \textless= 21, {]}, ci\_fun )
+
+prod\_hour\_warm \textless- do.call(data.frame, prod\_hour\_warm)
+names(prod\_hour\_warm) \textless- c(``hour'', ``mean'', ``lower'',
+``upper'')
+
+plot( NA, xlim = c(6, 21), ylim = range(
+c(prod\_hour\_warm\(lower, prod_hour_warm\)upper,
+prod\_hour\_month\$production), na.rm = TRUE ), xlab = ``Hour of day'',
+ylab = ``Solar production'', xaxt = ``n'', type = ``n'' )
+
+axis( 1, at = c(6, 9, 12, 15, 18, 21), labels = c(``06:00'', ``09:00'',
+``12:00'', ``15:00'', ``18:00'', ``21:00'') )
+
+polygon( c(prod\_hour\_warm\(hour, rev(prod_hour_warm\)hour)),
+c(prod\_hour\_warm\(lower, rev(prod_hour_warm\)upper)), col = rgb(0, 0,
+0, 0.08), border = NA )
+
+lines( prod\_hour\_warm\(hour,
+  prod_hour_warm\)mean, lwd = 3, col = rgb(0, 0, 0, 0.35) )
+
+warm\_months \textless- sort(unique(prod\_hour\_month\$month))
+
+for (i in seq\_along(warm\_months)) \{ tmp \textless-
+prod\_hour\_month{[}prod\_hour\_month\$month == warm\_months{[}i{]}, {]}
+
+lines( tmp\(hour,
+    tmp\)production, lwd = 2, col = i ) \}
+
+legend( ``topright'', legend = month.abb{[}warm\_months{]}, col =
+seq\_along(warm\_months), lty = 1, lwd = 2, title = ``Month'' )
+
+\subsection{grid consumption during the
+night}\label{grid-consumption-during-the-night}
+
+plot(production \textasciitilde{} hour, dat{[}dat\$season == ``warm'',
+{]})
+
+I want another graphic for plotting the grid\_consumption and i want it
+to start at 21:00 Uhr and go through the night till the morning at
+06:00. I aslo want you to write the version below more concise (e.g.~no
+extra dataframe for warm\_dat\ldots.)
+
+warm\_dat \textless- dat{[}dat\$season == ``warm'', {]}
+
+prod\_hour\_month \textless- aggregate( production \textasciitilde{}
+month + hour, data = warm\_dat, FUN = function(x) \{ n \textless-
+sum(!is.na(x)) m \textless- mean(x, na.rm = TRUE) s \textless- sd(x,
+na.rm = TRUE)
+
+\begin{verbatim}
+error <- qt(0.90, df = n - 1) * s / sqrt(n)
+
+c(
+  mean = m,
+  lower = m - error,
+  upper = m + error
+)
+\end{verbatim}
+
+\} )
+
+prod\_hour\_month \textless- do.call( data.frame, prod\_hour\_month )
+
+names(prod\_hour\_month) \textless- c( ``month'', ``hour'', ``mean'',
+``lower'', ``upper'' )
+
+prod\_hour\_month \textless- prod\_hour\_month{[}
+order(prod\_hour\_month\(month, prod_hour_month\)hour),{]}
+
+plot( NA, xlim = c(6, 24), ylim = range(
+c(prod\_hour\_month\(lower, prod_hour_month\)upper), na.rm = TRUE ),
+xlab = ``Hour of day'', ylab = ``Production'', xaxt = ``n'', type =
+``n'' )
+
+axis( side = 1, at = c(6, 9, 12, 15, 18, 21), labels = c(``06:00'',
+``09:00'', ``12:00'', ``15:00'', ``18:00'', ``21:00'') )
+
+warm\_months \textless- sort(unique(prod\_hour\_month\$month))
+
+for (i in seq\_along(warm\_months)) \{ month\_i \textless-
+warm\_months{[}i{]} tmp \textless-
+prod\_hour\_month{[}prod\_hour\_month\$month == month\_i, {]}
+
+lines( tmp\(hour,
+    tmp\)mean, type = ``l'', lwd = 2, col = i )
+
+lines( tmp\(hour,
+    tmp\)lower, type = ``l'', lty = 2, col = i )
+
+lines( tmp\(hour,
+    tmp\)upper, type = ``l'', lty = 2, col = i ) \}
+
+legend( ``topright'', legend = month.abb{[}warm\_months{]}, col =
+seq\_along(warm\_months), lty = 1, lwd = 2, title = ``Month'' )
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{8}
+\tightlist
+\item
+  Statistical and machine-learning appendix
+\end{enumerate}
+
+I would not put this too early. Use it after the main story, as a deeper
+analytical layer.
+
+Core questions from your list Which variables explain the largest share
+of variance in household grid consumption? Can days be grouped into
+typical usage patterns using clustering methods? Can a machine learning
+model predict the next day's energy production based on the previous
+day's data? Can daily grid consumption be predicted from solar
+production, household consumption, and battery behavior? Is there a
+statistically significant weekday/weekend difference in solar
+production? Is there a statistically significant weekday/weekend
+difference in household consumption?
+
+\end{document}

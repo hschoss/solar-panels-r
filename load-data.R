@@ -28,5 +28,3 @@ dat$month <- as.integer(format(dat$time, "%m"))
 dat$day   <- as.integer(format(dat$time, "%d"))
 dat$hour  <- as.integer(format(dat$time, "%H"))
 dat$date  <- as.Date(dat$time)
-
-
