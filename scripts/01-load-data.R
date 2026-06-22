@@ -1,8 +1,8 @@
-# data-loader.R
+# 01-load-data.R
 # author: hannes
-# date: 2026-05-26 21:16
+# date: 2026-06-22
 
-# setwd("/home/hannes/gh/solar")
+# setwd("/home/hannes/gh/solar-panels-r")
 
 dat23 <- read.csv("data/sonnen_power_data_2023.csv", header = TRUE, sep = ",")
 dat24 <- read.csv("data/sonnen_power_data_2024.csv", header = TRUE, sep = ",")

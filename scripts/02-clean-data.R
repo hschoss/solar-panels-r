@@ -2,7 +2,6 @@
 
 dat_clean <- dat
 
-
 # variables that should be approximated
 energy_vars <- c(
   "production",

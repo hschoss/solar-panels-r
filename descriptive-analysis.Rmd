@@ -39,7 +39,7 @@ cold_flow_caption <- paste(
 )
 
 # setwd("/home/hannes/gh/solar-panels-r")
-source("data-loader.R")
+source("scripts/01-load-data.R")
 
 wh_to_mwh <- function(x) x / 1000000
 wh_to_kwh <- function(x) x / 1000
@@ -157,7 +157,7 @@ dat <- dat[!(dat$year == 2023 & dat$month == 3), ]
 ```
 
 ```{r clean-data, echo=FALSE}
-source("data-cleaner.R")
+source("scripts/02-clean-data.R")
 ```
 
 Other months contain only a small number of missing 3-hour intervals. For
@@ -246,7 +246,7 @@ of simple monthly sums.
 ```{r monthly-plots, fig.width=9, fig.height=7, echo=FALSE}
 par(mfrow = c(2, 2))
 
-source("functions/plot-month-by-year.R")
+source("R/plot-month-by-year.R")
 
 plot_month_by_year(
   dat,
@@ -437,7 +437,7 @@ cold_flow <- mean_seasonal_total[
 ```
 
 ```{r warm-flowchart, echo=FALSE, fig.cap=warm_flow_caption}
-source("functions/plot-flowchart.R")
+source("R/plot-flowchart.R")
 
 plot_flowchart(
   warm_flow,
